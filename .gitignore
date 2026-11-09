@@ -1,0 +1,7 @@
+.venv/
+build/
+vendor/
+__pycache__/
+*.pyc
+reports/simulation*.json
+*.zip
