@@ -1,0 +1,2 @@
+samples=75600 unreachable=0 clipped=216 (startup=216) FK_bad=0 max_FK_mm=7.71475e-05
+rejected whole poses=36 unsafe writes=0

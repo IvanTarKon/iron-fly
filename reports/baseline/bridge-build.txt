@@ -1,0 +1,1 @@
+built /home/ivan/Documents/ChatGPT/проект железная муха/vendor/Hexapod-Simulation/bridge/libhexapod_fw.so

@@ -1,0 +1,1 @@
+Four pinned repositories and the recorded minimal patch verified

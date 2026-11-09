@@ -1,0 +1,1 @@
+25 baseline failures classified; heartbeat-only diagnostic: 4 expected failures

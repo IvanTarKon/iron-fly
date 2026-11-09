@@ -1,0 +1,49 @@
+diff --git a/src/core/robot.hpp b/src/core/robot.hpp
+index 3c3b8eb..3e67b96 100644
+--- a/src/core/robot.hpp
++++ b/src/core/robot.hpp
+@@ -77,6 +77,15 @@ inline bool resolve(const Vec3 (&feet)[cfg::N_LEGS], const Vec3 &body_pos,
+     const kin::IkResult r = kin::inverse(leg, feet[leg], body_pos, body_rpy);
+     if (!r.ok)
+       ok = false;
++    // Muha adapter: reject the entire pose instead of independently clipping
++    // joints and silently changing the requested foot positions.
++    const float angles[] = {r.coxa, r.femur, r.tibia};
++    for (int j = 0; j < cfg::N_JOINTS; ++j) {
++      const int ch = cfg::servo_channel(leg, j);
++      const float raw = math::rad2deg(angles[j]) * cfg::DIRECTION[ch] + cfg::TRIM_DEG[ch];
++      if (!std::isfinite(raw) || raw < cfg::RANGE[j].min_deg || raw > cfg::RANGE[j].max_deg)
++        ok = false;
++    }
+     out.deg[cfg::servo_channel(leg, cfg::COXA)] = map_servo(leg, cfg::COXA, r.coxa);
+     out.deg[cfg::servo_channel(leg, cfg::FEMUR)] = map_servo(leg, cfg::FEMUR, r.femur);
+     out.deg[cfg::servo_channel(leg, cfg::TIBIA)] = map_servo(leg, cfg::TIBIA, r.tibia);
+@@ -216,6 +225,8 @@ public:
+     yaw_rad = odom_yaw_;
+   }
+   const ServoAngles &joints() const { return servos_; }
++  bool pose_rejected() const { return pose_rejected_; }
++  unsigned rejected_poses() const { return rejected_poses_; }
+   
+   // Live body pose (the interpolated value mid-slew, not the target), in the
+   // same units/reference as set_body_pose: x/y/z mm with z relative to standing
+@@ -401,7 +412,9 @@ private:
+ 
+   void resolve_write() {
+     ServoAngles next;
+-    if (resolve(leg_, body_pos_, body_rpy_, next))
++    pose_rejected_ = !resolve(leg_, body_pos_, body_rpy_, next);
++    if (pose_rejected_) ++rejected_poses_;
++    if (!pose_rejected_)
+       servos_ = next; // else hold the last good pose rather than lunge
+     hw_.write_servos(servos_.deg);
+   }
+@@ -480,6 +493,8 @@ private:
+   Vec3 leg_[cfg::N_LEGS];
+   Vec3 leg_t_[cfg::N_LEGS];
+ 
++  bool pose_rejected_ = false;
++  unsigned rejected_poses_ = 0;
+   ServoAngles servos_{}; // last commanded (also curl interpolation state)
+ 
+   // Sequencer.

@@ -1,0 +1,5 @@
+{
+  "UPSTREAM_EXIT": "1",
+  "DEMO_EXIT": "0",
+  "CHECK_MODE": "--demo-only"
+}

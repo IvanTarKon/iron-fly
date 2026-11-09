@@ -1,0 +1,1 @@
+Reachable leg samples: 6000/6000; independently clamped joint samples: 0

@@ -1,0 +1,10 @@
+stand-up with heartbeat: PASS
+six movement scenarios and settling: PASS
+neutral joint targets (LF LM LR RF RM RR), rad:
+-0.000000 0.247565 -1.691127
+-0.000000 0.247565 -1.691127
+-0.000000 0.247565 -1.691127
+-0.000000 0.247565 -1.691127
+-0.000000 0.247565 -1.691127
+-0.000000 0.247565 -1.691127
+upstream timeout -> sit down -> OFF: PASS (differs from planned STOP)

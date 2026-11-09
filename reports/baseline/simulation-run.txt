@@ -1,0 +1,2 @@
+pybullet build time: Nov  6 2026 14:04:29
+20 simulated seconds; 18 finite targets; report saved. Physical stability requires inspection.

@@ -1,0 +1,27 @@
+{
+  "logical_cpus": 12,
+  "interval_s": 5.002749825998762,
+  "start": {
+    "t": 148.90000000000236,
+    "state": "WALK",
+    "paused": false
+  },
+  "end": {
+    "t": 153.8800000000049,
+    "state": "WALK",
+    "paused": false
+  },
+  "processes": [
+    {
+      "pid": "448156",
+      "cpu_percent_one_core": 12.393184179986832,
+      "memory_mib": {
+        "Rss": 270.4,
+        "Pss": 259.5,
+        "Private_Clean": 4.6,
+        "Private_Dirty": 253.0
+      }
+    }
+  ],
+  "sim_seconds_per_wall_second": 0.9954525357478429
+}

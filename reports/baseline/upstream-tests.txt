@@ -1,0 +1,229 @@
+=== test_body ===
+servo map <-> unmap are inverse (inside the clamp range)
+  ok    unmap(map(x)) == x
+  ok    unmap(map(x)) == x
+  ok    unmap(map(x)) == x
+servo mapping clamps to the joint limits
+  ok    over-max clamps to max
+  ok    under-min clamps to min
+resolve neutral standing pose: reachable, in range, round-trips
+  ok    all legs reachable
+  ok    all servo angles within limits
+  ok    unmap -> FK reproduces the foot targets
+resolve reports an unreachable foot
+  ok    one unreachable leg => resolve false
+
+[body] PASSED - 0 failure(s)
+
+=== test_gait ===
+neutral stance: STANCE_RADIUS from each mount, on the ground
+  ok    radius = STANCE_RADIUS
+  ok    on the ground
+  ok    radius = STANCE_RADIUS
+  ok    on the ground
+  ok    radius = STANCE_RADIUS
+  ok    on the ground
+  ok    radius = STANCE_RADIUS
+  ok    on the ground
+  ok    radius = STANCE_RADIUS
+  ok    on the ground
+  ok    radius = STANCE_RADIUS
+  ok    on the ground
+zero command from rest: perfectly still, no foot lift (all gaits)
+  ok    tripod: every foot stays at neutral
+  ok    tripod: no foot ever leaves the ground
+  ok    tripod: phase never advances
+  ok    tripod: achieved twist stays zero
+  ok    wave: every foot stays at neutral
+  ok    wave: no foot ever leaves the ground
+  ok    wave: phase never advances
+  ok    wave: achieved twist stays zero
+  ok    ripple: every foot stays at neutral
+  ok    ripple: no foot ever leaves the ground
+  ok    ripple: phase never advances
+  ok    ripple: achieved twist stays zero
+walk + turn, then zero command: settles at neutral and holds
+  ok    all feet at neutral after stopping
+  ok    no foot lifts after stopping
+  ok    phase frozen after stopping
+stride grows linearly with speed (below the clamp)
+  ok    span at v=100 = v*duty*cycle_time
+  ok    span at v=200 = v*duty*cycle_time
+  ok    doubling speed doubles stride
+stride clamp caps speed and preserves turn radius
+  ok    straight top speed = max_stride/stance_duration
+  ok    clamp engaged
+  ok    twist scaled down (saturated)
+  ok    v and w scaled equally => turn radius preserved
+stop/restart from any phase: feet land first, no height jumps (all gaits)
+  ok    tripod: no foot drops when stopping
+  ok    tripod: stop completes within one swing
+  ok    tripod: rests frozen with every foot at neutral
+  ok    tripod: no foot jumps up when restarting
+  ok    wave: no foot drops when stopping
+  ok    wave: stop completes within one swing
+  ok    wave: rests frozen with every foot at neutral
+  ok    wave: no foot jumps up when restarting
+  ok    ripple: no foot drops when stopping
+  ok    ripple: stop completes within one swing
+  ok    ripple: rests frozen with every foot at neutral
+  ok    ripple: no foot jumps up when restarting
+set_gait mid-walk is held until the walk is at rest
+  ok    still tripod right after the request
+  ok    still tripod while walking
+  ok    came to rest
+  ok    switched to wave once at rest
+  ok    no height jump across the whole switch
+  ok    at rest the switch is immediate
+
+[gait] PASSED - 0 failure(s)
+
+=== test_kinematics ===
+FK absolute value (leg 0, zero angles)
+  ok    leg0 zero-pose foot x ~= 254.75
+  ok    leg0 zero-pose foot y ~= -229.75
+  ok    leg0 zero-pose foot z ~= 0
+FK -> IK -> FK round-trip (no body pose)
+  ok    leg 0: IK reachable
+  ok    leg 0: foot reproduced
+  ok    leg 0: IK reachable
+  ok    leg 0: foot reproduced
+  ok    leg 0: IK reachable
+  ok    leg 0: foot reproduced
+  ok    leg 1: IK reachable
+  ok    leg 1: foot reproduced
+  ok    leg 1: IK reachable
+  ok    leg 1: foot reproduced
+  ok    leg 1: IK reachable
+  ok    leg 1: foot reproduced
+  ok    leg 2: IK reachable
+  ok    leg 2: foot reproduced
+  ok    leg 2: IK reachable
+  ok    leg 2: foot reproduced
+  ok    leg 2: IK reachable
+  ok    leg 2: foot reproduced
+  ok    leg 3: IK reachable
+  ok    leg 3: foot reproduced
+  ok    leg 3: IK reachable
+  ok    leg 3: foot reproduced
+  ok    leg 3: IK reachable
+  ok    leg 3: foot reproduced
+  ok    leg 4: IK reachable
+  ok    leg 4: foot reproduced
+  ok    leg 4: IK reachable
+  ok    leg 4: foot reproduced
+  ok    leg 4: IK reachable
+  ok    leg 4: foot reproduced
+  ok    leg 5: IK reachable
+  ok    leg 5: foot reproduced
+  ok    leg 5: IK reachable
+  ok    leg 5: foot reproduced
+  ok    leg 5: IK reachable
+  ok    leg 5: foot reproduced
+FK -> IK -> FK round-trip (with body pose)
+  ok    leg 0: IK reachable with body pose
+  ok    leg 0: world foot reproduced
+  ok    leg 1: IK reachable with body pose
+  ok    leg 1: world foot reproduced
+  ok    leg 2: IK reachable with body pose
+  ok    leg 2: world foot reproduced
+  ok    leg 3: IK reachable with body pose
+  ok    leg 3: world foot reproduced
+  ok    leg 4: IK reachable with body pose
+  ok    leg 4: world foot reproduced
+  ok    leg 5: IK reachable with body pose
+  ok    leg 5: world foot reproduced
+unreachable target rejected
+  ok    far target reports unreachable
+
+[kinematics] PASSED - 0 failure(s)
+
+=== test_protocol ===
+frame encode -> parse round-trip
+  ok    frame size = payload + 5
+  ok    parser completes on the final byte
+  ok    opcode round-trips
+  ok    length round-trips
+  ok    payload round-trips
+zero-length payload (e.g. Enable)
+  ok    empty frame is 5 bytes
+  ok    empty frame parses
+  ok    opcode round-trips
+  ok    length is zero
+typed payload memcpy round-trip (SetVelocity)
+  ok    float fields survive encode/parse/memcpy
+CRC rejects a corrupted frame
+  ok    no frame completes when a byte is corrupted
+parser resyncs after leading garbage
+  ok    valid frame found after garbage
+  ok    opcode correct after resync
+  ok    payload correct after resync
+message kinds
+  ok    SetVelocity is fire-and-forget
+  ok    Heartbeat is fire-and-forget
+  ok    GetVoltage is request/reply
+  ok    GetTelemetry is request/reply
+
+[protocol] PASSED - 0 failure(s)
+
+=== test_robot ===
+boot OFF (de-energized) -> enable -> stand-up animation -> IDLE
+  ok    boots in OFF
+  ok    de-energized at boot
+  FAIL  no servo writes before enable   [test/test_robot.cpp:86]
+  ok    powered after enable
+  ok    stand-up animation runs in SETUP
+  ok    still animating a few ticks in
+  ok    shutdown ignored mid stand-up
+  FAIL  stand-up completes -> IDLE   [test/test_robot.cpp:98]
+  ok    standing servo angles within limits
+walk then stop, with odometry
+  FAIL  standing   [test/test_robot.cpp:108]
+  FAIL  nonzero command -> WALK   [test/test_robot.cpp:111]
+  FAIL  odometry advances forward   [test/test_robot.cpp:113]
+  FAIL  zero command -> IDLE   [test/test_robot.cpp:116]
+  ok    odometry frozen when stopped
+watchdog: lost comms stops the robot but keeps it standing
+  FAIL  walking with a live link   [test/test_robot.cpp:130]
+  FAIL  watchdog stopped the robot   [test/test_robot.cpp:132]
+  FAIL  still enabled (standing, not shut down)   [test/test_robot.cpp:133]
+over-current -> FAULT (emergency stop), then recover via enable
+  FAIL  walking   [test/test_robot.cpp:144]
+  FAIL  over-current -> FAULT   [test/test_robot.cpp:148]
+  ok    power cut on FAULT
+  FAIL  FAULT is sticky   [test/test_robot.cpp:152]
+  FAIL  enable recovers from FAULT -> stands up -> IDLE   [test/test_robot.cpp:156]
+  FAIL  re-energized after recovery   [test/test_robot.cpp:157]
+low-voltage -> FAULT (emergency stop)
+  FAIL  idle after stand-up   [test/test_robot.cpp:166]
+  FAIL  low-voltage -> FAULT   [test/test_robot.cpp:170]
+  ok    power cut on FAULT
+walk -> shutdown: sit-down animation -> curled, de-energized OFF
+  FAIL  walking before shutdown   [test/test_robot.cpp:181]
+  FAIL  shutdown -> SHUTDOWN (sit-down running)   [test/test_robot.cpp:184]
+  FAIL  still powered while sitting down   [test/test_robot.cpp:185]
+  FAIL  enable ignored mid sit-down   [test/test_robot.cpp:187]
+  ok    sit-down completes -> OFF
+  ok    power cut once curled
+  ok    legs curled at the end (femur to max)
+router: frames drive the robot and produce replies
+  ok    Enable frame starts stand-up (SETUP)
+  FAIL  stands up to IDLE   [test/test_robot.cpp:206]
+  FAIL  SetVelocity frame -> walking   [test/test_robot.cpp:213]
+  ok    voltage reply length
+  ok    voltage reply carries its opcode
+  ok    voltage reply value
+  ok    telemetry reply length
+  FAIL  telemetry reports WALK   [test/test_robot.cpp:224]
+  ok    telemetry current
+  ok    joints reply length
+  ok    body-pose reply length
+  ok    body-pose reply carries its opcode
+  FAIL  body-pose z is the commanded height offset   [test/test_robot.cpp:239]
+  FAIL  body-pose yaw round-trips in degrees   [test/test_robot.cpp:240]
+  ok    unknown opcode -> Error frame
+  ok    error status = BAD_OPCODE
+
+[robot] FAILED - 25 failure(s)
+
+HOST TESTS FAILED

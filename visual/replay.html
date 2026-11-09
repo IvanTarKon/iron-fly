@@ -1,0 +1,81 @@
+<div id="muha-replay">
+  <div class="mr-heading"><h2>Железная муха</h2><span class="text-small text-muted">Запись PyBullet · 18 суставов</span></div>
+  <div class="viz-controls">
+    <label class="form-label">Походка<select id="mr-gait" class="form-select"><option value="tripod">Tripod — три ноги</option><option value="wave">Wave — волна</option><option value="ripple">Ripple — перекат</option></select></label>
+    <label class="form-label">Движение<select id="mr-direction" class="form-select"><option value="forward">Вперёд</option><option value="backward">Назад</option><option value="left">Влево</option><option value="right">Вправо</option><option value="ccw">Поворот влево</option><option value="cw">Поворот вправо</option></select></label>
+  </div>
+  <canvas id="mr-scene" role="img" aria-label="Анимированная кинематическая модель шестиногого робота и траектория корпуса">Шестиногий робот с тремя суставами на каждой ноге.</canvas>
+  <div class="viz-row mr-actions">
+    <button type="button" id="mr-play" class="btn btn-primary">Воспроизвести</button>
+    <button type="button" id="mr-top" class="btn" aria-pressed="false">Вид сверху</button>
+    <label class="form-label">Темп<select id="mr-speed" class="form-select"><option value="0.5">0,5×</option><option value="1" selected>1×</option><option value="2">2×</option></select></label>
+  </div>
+  <label class="form-label" for="mr-time"><span id="mr-clock" class="tabular-nums">6,0 / 14,0 с</span><input id="mr-time" class="form-range" type="range" min="0" max="13.9" step="0.1" value="6"></label>
+  <div class="mr-stages text-small text-muted"><span>Подъём 0–6 с</span><span>Движение 6–12 с</span><span>Остановка 12–14 с</span></div>
+  <div id="mr-status" class="viz-row tabular-nums"></div>
+  <div id="mr-announce" class="sr-only" aria-live="polite"></div>
+  <div class="text-small text-muted">Цели суставов · измеренное положение корпуса · сетка 10 см</div>
+</div>
+<style>
+#muha-replay{display:flex;flex-direction:column;gap:calc(var(--font-size-base)*.75)}
+#muha-replay .mr-heading{display:flex;flex-wrap:wrap;gap:calc(var(--font-size-base)*.5);align-items:baseline;padding-right:95px}
+#muha-replay canvas{width:100%;height:360px;display:block;touch-action:pan-y}
+#muha-replay .mr-stages{display:flex;flex-wrap:wrap;justify-content:space-between;gap:calc(var(--font-size-base)*.5)}
+#muha-replay .mr-actions{align-items:center}
+@media(max-width:440px){#muha-replay canvas{height:290px}}
+</style>
+<script id="mr-data" type="application/json">__DATA__</script>
+<script>
+(() => {
+  const root=document.getElementById('muha-replay');
+  const data=JSON.parse(document.getElementById('mr-data').textContent);
+  const $=id=>document.getElementById('mr-'+id);
+  const cv=$('scene'),ctx=cv.getContext('2d');
+  const controls={gait:$('gait'),direction:$('direction'),time:$('time'),speed:$('speed')};
+  let time=6, playing=false, top=false, last=0, lastStatus='', colors={};
+  const names=['ЛП','ЛС','ЛЗ','ПП','ПС','ПЗ'];
+  function selected(){return data.cases[controls.gait.value+'/'+controls.direction.value]}
+  function sample(t){const rows=selected();const j=Math.min(rows.length-1,Math.floor(t*10));const k=Math.min(rows.length-1,j+1),f=t*10-j;return rows[j].map((v,i)=>v+(rows[k][i]-v)*f)}
+  function save(){$('announce').textContent=controls.gait.options[controls.gait.selectedIndex].text+'; '+controls.direction.options[controls.direction.selectedIndex].text+'; '+time.toFixed(1)+' с';if(window.openai?.setWidgetState)window.openai.setWidgetState({modelContent:{gait:controls.gait.value,direction:controls.direction.value,time:Math.round(time*10)/10},privateContent:{top,speed:controls.speed.value}}).catch(()=>{})}
+  function restore(s){if(!s)return;const m=s.modelContent||{},p=s.privateContent||{};if(data.cases[(m.gait||'')+'/'+(m.direction||'')]){controls.gait.value=m.gait;controls.direction.value=m.direction}if(Number.isFinite(m.time))time=Math.max(0,Math.min(13.9,m.time));top=!!p.top;if(['0.5','1','2'].includes(p.speed))controls.speed.value=p.speed;$('top').setAttribute('aria-pressed',String(top));controls.time.value=time;render()}
+  function color(name){const e=document.createElement('span');e.style.color='var('+name+')';root.appendChild(e);const v=getComputedStyle(e).color;e.remove();return v}
+  function theme(){colors={fg:color('--foreground'),muted:color('--muted-foreground'),grid:color('--border'),body:color('--secondary'),line:color('--viz-series-1'),lift:color('--viz-series-2'),card:color('--background')};render()}
+  function resize(){const d=window.devicePixelRatio||1;cv.width=Math.round(cv.clientWidth*d);cv.height=Math.round(cv.clientHeight*d);ctx.setTransform(d,0,0,d,0,0);render()}
+  function render(){
+    if(!cv.width)return;
+    const w=cv.clientWidth,h=cv.clientHeight,r=sample(time),q=r.slice(6,24),pos=r.slice(0,3),[roll,pitch,yaw]=r.slice(3,6);
+    const scale=Math.min(w/0.82,h/0.56),a=-.72;
+    function project(v){const x=v[0]-pos[0],y=v[1]-pos[1],z=v[2];return top?[w/2-y*scale,h/2-x*scale]:[w/2+(Math.cos(a)*x-Math.sin(a)*y)*scale,h*.60+((Math.sin(a)*x+Math.cos(a)*y)*.50-z)*scale]}
+    function world(v){const [x,y,z]=[-v[1],v[0],v[2]];const cr=Math.cos(roll),sr=Math.sin(roll),cp=Math.cos(pitch),sp=Math.sin(pitch),cy=Math.cos(yaw),sy=Math.sin(yaw);return[pos[0]+cy*cp*x+(cy*sp*sr-sy*cr)*y+(cy*sp*cr+sy*sr)*z,pos[1]+sy*cp*x+(sy*sp*sr+cy*cr)*y+(sy*sp*cr-cy*sr)*z,pos[2]-sp*x+cp*sr*y+cp*cr*z]}
+    function line(points,c,width=1,alpha=1){ctx.beginPath();points.map(project).forEach((p,i)=>i?ctx.lineTo(...p):ctx.moveTo(...p));ctx.strokeStyle=c;ctx.lineWidth=width;ctx.globalAlpha=alpha;ctx.lineCap='round';ctx.lineJoin='round';ctx.stroke();ctx.globalAlpha=1}
+    function circle(v,radius,c){const p=project(v);ctx.beginPath();ctx.arc(...p,radius,0,Math.PI*2);ctx.fillStyle=c;ctx.fill()}
+    ctx.clearRect(0,0,w,h);
+    const gridX=Math.floor(pos[0]*10)/10,gridY=Math.floor(pos[1]*10)/10;
+    for(let i=-7;i<=7;i++){line([[gridX+i*.1,gridY-.7,0],[gridX+i*.1,gridY+.7,0]],colors.grid);line([[gridX-.7,gridY+i*.1,0],[gridX+.7,gridY+i*.1,0]],colors.grid)}
+    const trail=selected().slice(0,Math.floor(time*10)+1).map(s=>[s[0],s[1],.001]);if(trail.length>1)line(trail,colors.line,2,.5);
+    const chains=data.mounts.map((mount,i)=>{const [mx,my,mz,angle]=mount,[c,f,t]=q.slice(i*3,i*3+3),theta=angle+c;const radii=[0,.068,.068+.0767*Math.cos(f),.068+.0767*Math.cos(f)+.0996*Math.cos(f+t)];const heights=[0,0,.0767*Math.sin(f),.0767*Math.sin(f)+.0996*Math.sin(f+t)];return radii.map((radius,j)=>world([mx+radius*Math.cos(theta),my+radius*Math.sin(theta),mz+heights[j]]))});
+    // Draw far legs first; foot shadows are projections, not contact sensors.
+    const order=chains.map((ch,i)=>({ch,i,depth:project(ch[0])[1]})).sort((x,y)=>x.depth-y.depth);
+    for(const {ch} of order){const foot=ch[3];circle([foot[0],foot[1],0],4,colors.grid);line(ch,colors.muted,8);line(ch,colors.line,4);ch.slice(0,3).forEach(v=>circle(v,4,colors.fg));circle(foot,5,foot[2]>.025?colors.lift:colors.line)}
+    const perimeter=[0,1,2,5,4,3].map(i=>chains[i][0]);ctx.beginPath();perimeter.map(project).forEach((p,i)=>i?ctx.lineTo(...p):ctx.moveTo(...p));ctx.closePath();ctx.fillStyle=colors.body;ctx.fill();ctx.strokeStyle=colors.fg;ctx.lineWidth=2;ctx.stroke();
+    const arrow=[world([-.035,0,.008]),world([.058,0,.008])];line(arrow,colors.fg,3);line([world([.038,-.013,.008]),arrow[1],world([.038,.013,.008])],colors.fg,3);
+    ctx.font='500 '+getComputedStyle(root).fontSize+' sans-serif';ctx.textAlign='center';ctx.fillStyle=colors.fg;
+    for(const {ch,i} of order){const p=project(ch[1]);ctx.fillText(names[i],p[0],p[1]-12)}
+    const state=selected()[Math.min(139,Math.floor(time*10))][24];const phase=['Подъём','Стойка','Ходьба','Посадка','Ошибка','Выключен'][state];
+    const text=phase+' · X '+(pos[0]*100).toFixed(1)+' см · Y '+(pos[1]*100).toFixed(1)+' см · Z '+(pos[2]*100).toFixed(1)+' см';
+    if(text!==lastStatus){$('status').textContent=text;lastStatus=text}
+    $('clock').textContent=time.toFixed(1).replace('.',',')+' / 14,0 с';controls.time.value=time.toFixed(1);
+  }
+  function pause(){playing=false;$('play').textContent='Воспроизвести'}
+  function animate(now){if(!playing)return;if(last)time=Math.min(13.9,time+(now-last)/1000*Number(controls.speed.value));last=now;render();if(time>=13.9){pause();save()}else requestAnimationFrame(animate)}
+  $('play').onclick=()=>{if(playing){pause();save()}else{if(time>=13.9)time=0;playing=true;last=0;$('play').textContent='Пауза';requestAnimationFrame(animate)}};
+  $('top').onclick=()=>{top=!top;$('top').setAttribute('aria-pressed',String(top));render();save()};
+  controls.time.oninput=()=>{pause();time=Number(controls.time.value);render()};controls.time.onchange=save;
+  for(const key of ['gait','direction'])controls[key].onchange=()=>{pause();time=6;render();save()};
+  controls.speed.onchange=save;
+  window.addEventListener('openai:set_globals',e=>{const state=e.detail?.globals?.widgetState;if(state){pause();restore(state)}});
+  new ResizeObserver(resize).observe(cv);
+  new MutationObserver(theme).observe(document.documentElement,{attributes:true,attributeFilter:['class','style','data-theme']});
+  theme();restore(window.openai?.widgetState);resize();
+})();
+</script>

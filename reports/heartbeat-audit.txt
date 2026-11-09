@@ -1,0 +1,58 @@
+boot OFF (de-energized) -> enable -> stand-up animation -> IDLE
+  ok    boots in OFF
+  ok    de-energized at boot
+  FAIL  no servo writes before enable   [/tmp/tmp4ytcu0dz/test_robot_heartbeat.cpp:86]
+  ok    powered after enable
+  ok    stand-up animation runs in SETUP
+  ok    still animating a few ticks in
+  ok    shutdown ignored mid stand-up
+  ok    stand-up completes -> IDLE
+  ok    standing servo angles within limits
+walk then stop, with odometry
+  ok    standing
+  ok    nonzero command -> WALK
+  ok    odometry advances forward
+  ok    zero command -> IDLE
+  ok    odometry frozen when stopped
+watchdog: lost comms stops the robot but keeps it standing
+  ok    walking with a live link
+  FAIL  watchdog stopped the robot   [/tmp/tmp4ytcu0dz/test_robot_heartbeat.cpp:132]
+  ok    still enabled (standing, not shut down)
+over-current -> FAULT (emergency stop), then recover via enable
+  ok    walking
+  ok    over-current -> FAULT
+  ok    power cut on FAULT
+  ok    FAULT is sticky
+  ok    enable recovers from FAULT -> stands up -> IDLE
+  ok    re-energized after recovery
+low-voltage -> FAULT (emergency stop)
+  ok    idle after stand-up
+  FAIL  low-voltage -> FAULT   [/tmp/tmp4ytcu0dz/test_robot_heartbeat.cpp:170]
+  FAIL  power cut on FAULT   [/tmp/tmp4ytcu0dz/test_robot_heartbeat.cpp:171]
+walk -> shutdown: sit-down animation -> curled, de-energized OFF
+  ok    walking before shutdown
+  ok    shutdown -> SHUTDOWN (sit-down running)
+  ok    still powered while sitting down
+  ok    enable ignored mid sit-down
+  ok    sit-down completes -> OFF
+  ok    power cut once curled
+  ok    legs curled at the end (femur to max)
+router: frames drive the robot and produce replies
+  ok    Enable frame starts stand-up (SETUP)
+  ok    stands up to IDLE
+  ok    SetVelocity frame -> walking
+  ok    voltage reply length
+  ok    voltage reply carries its opcode
+  ok    voltage reply value
+  ok    telemetry reply length
+  ok    telemetry reports WALK
+  ok    telemetry current
+  ok    joints reply length
+  ok    body-pose reply length
+  ok    body-pose reply carries its opcode
+  ok    body-pose z is the commanded height offset
+  ok    body-pose yaw round-trips in degrees
+  ok    unknown opcode -> Error frame
+  ok    error status = BAD_OPCODE
+
+[robot] FAILED - 4 failure(s)
