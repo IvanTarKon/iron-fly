@@ -13,13 +13,14 @@ import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'src'))
+from brain_control import BrainControl, validate_intent
 from motion import MotionController, get_motion_command, PERIOD, load_config
 from simulation_sink import SimulationSink, URDF_YAW_OFFSET
 from simulation import paths
 import pybullet as p
 import pybullet_data
 
-DEFAULTS = dict(vx=20., vy=0., yaw_rate=0., gait='tripod', yaw=0., friction=.8,
+DEFAULTS = dict(vx=100., vy=0., yaw_rate=0., gait='tripod', yaw=0., friction=.8,
                 gravity=9.81, camera_yaw=40., camera_pitch=-30., distance=.9)
 SAFETY = load_config(ROOT / 'config/demo.yml')['safety']
 BOUNDS = dict(vx=(-SAFETY['lin_vel_max'],SAFETY['lin_vel_max']),
@@ -86,9 +87,12 @@ def model_description(robot):
 
 class Engine:
     """All firmware and Bullet access lives on one worker thread."""
-    def __init__(self):
+    def __init__(self, brain_speed=.1, brain_turn_rate=math.radians(15)):
+        self.brain_speed = brain_speed
+        self.brain_turn_rate = brain_turn_rate
         self.commands = queue.Queue(maxsize=32)
         self.lock = threading.Lock()
+        self.brain_error = threading.Event()
         self.ready = threading.Event()
         self.closed = threading.Event()
         self.settings = dict(DEFAULTS)
@@ -113,6 +117,18 @@ class Engine:
         except queue.Full:
             raise ValueError('Очередь занята; повторите команду')
 
+    def submit_brain(self, raw):
+        try:
+            command = validate_intent(raw)
+        except ValueError:
+            self.brain_error.set()
+            raise
+        try:
+            self.commands.put_nowait({'action':'brain', 'command':command})
+        except queue.Full:
+            self.brain_error.set()
+            raise ValueError('Brain queue full; stopping')
+
     def reset(self):
         self.epoch += 1
         p.resetSimulation()
@@ -127,6 +143,7 @@ class Engine:
                                flags=p.URDF_USE_INERTIA_FROM_FILE)
         self.model, self.assets = model_description(self.robot)
         self.controller = MotionController()
+        self.brain = BrainControl(self.controller, self.brain_speed, self.brain_turn_rate)
         self.sink = SimulationSink(p,self.robot,self.controller.config)
         self.mode = 'start'
         self.moving = False
@@ -145,7 +162,7 @@ class Engine:
         with self.lock:
             self.snapshot={'ready':True,'bounds':BOUNDS,'settings':dict(self.settings),'output':asdict(self.last_output) if self.last_output else None,
                            'position':pos,'rpy':p.getEulerFromQuaternion(rot),'paused':self.paused,
-                           'moving':self.moving,'notice':self.notice,'epoch':self.epoch,
+                           'brain':self.brain.status(),'moving':self.moving,'notice':self.notice,'epoch':self.epoch,
                            'pose':{'position':base_pos,'quaternion':base_rot,'joints':joints},
                            'wall_time':time.monotonic()}
         self.ready.set()
@@ -162,6 +179,14 @@ class Engine:
                     action=req['action']
                     self.last_client=started
                     if action=='heartbeat':continue
+                    if action=='brain':
+                        self.brain.accept(req['command'], self.controller)
+                        self.paused=False
+                        self.mode=None
+                        self.notice='Управление от мозга: '+req['command']
+                        continue
+                    if action in ('start','move','stop','pause','reset'):
+                        self.brain.release()
                     if action in ('apply','reset'):
                         settings=req['settings']
                         if action=='apply' and settings['yaw']!=self.settings['yaw']:
@@ -182,7 +207,11 @@ class Engine:
                         self.moving=False;self.paused=False;self.notice='Остановка в стойке'
                     elif action=='pause':
                         self.paused=not self.paused;self.notice='Физика приостановлена' if self.paused else 'Физика продолжается'
-                if started-self.last_client>2:
+                if self.brain_error.is_set():
+                    self.brain_error.clear()
+                    self.brain.fail('Invalid brain request; explicit start required')
+                    self.paused=False
+                if not self.brain.active and started-self.last_client>2:
                     self.moving=False
                     self.notice='Нет связи с интерфейсом; движение остановлено'
                 if not self.paused:
@@ -194,7 +223,12 @@ class Engine:
                     if changing:self.notice='Остановка перед сменой походки'
                     s=self.settings
                     command=get_motion_command(self.controller.time,mode,s['vx']/1000,s['vy']/1000,math.radians(s['yaw_rate']),gait=gait)
+                    if self.brain.active:
+                        command=self.brain.next_command(self.controller)
+                        self.moving=command.mode=='move'
                     self.last_output=self.controller.update_motion(command,PERIOD)
+                    if self.brain.active:
+                        self.brain.observe(self.last_output)
                     self.sink.apply(self.last_output)
                     for _ in range(5):p.stepSimulation()
                     if not changing and self.notice=='Остановка перед сменой походки':
@@ -240,7 +274,7 @@ def make_handler(engine):
                     return self.send(200,asset.read_bytes(),'application/octet-stream')
             self.send(404,b'Not found','text/plain')
         def do_POST(self):
-            if self.path!='/api/command':return self.send(404,b'Not found','text/plain')
+            if self.path not in ('/api/command','/api/brain'):return self.send(404,b'Not found','text/plain')
             if self.headers.get('X-Muha-UI')!='1':return self.send(403,b'Forbidden','text/plain')
             origin=self.headers.get('Origin')
             if origin and origin not in (f'http://127.0.0.1:{self.server.server_port}',f'http://localhost:{self.server.server_port}'):
@@ -248,9 +282,12 @@ def make_handler(engine):
             try:
                 size=int(self.headers.get('Content-Length','0'))
                 if not 0<size<=8192:raise ValueError('Неверный размер запроса')
-                engine.submit(json.loads(self.rfile.read(size)))
+                raw=json.loads(self.rfile.read(size))
+                if self.path=='/api/brain':engine.submit_brain(raw)
+                else:engine.submit(raw)
                 self.send(202,b'{"accepted":true}','application/json')
             except (ValueError,TypeError) as exc:
+                if self.path=='/api/brain':engine.brain_error.set()
                 self.send(400,json.dumps({'error':str(exc)},ensure_ascii=False).encode(),'application/json')
     return Handler
 
@@ -258,8 +295,10 @@ def make_handler(engine):
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--port',type=int,default=8765)
+    parser.add_argument('--brain-speed',type=float,default=.1,help='Base speed in m/s, maximum 0.2')
+    parser.add_argument('--brain-turn-rate',type=float,default=15.,help='Turn speed in degrees/s')
     args=parser.parse_args()
-    engine=Engine()
+    engine=Engine(args.brain_speed, math.radians(args.brain_turn_rate))
     server=ThreadingHTTPServer(('127.0.0.1',args.port),make_handler(engine))
     print(f'Железная муха: http://127.0.0.1:{server.server_port}',flush=True)
     try:server.serve_forever()

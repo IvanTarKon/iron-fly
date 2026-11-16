@@ -13,7 +13,7 @@ class UiTest(unittest.TestCase):
             with self.assertRaises(ValueError):validate_settings(values,DEFAULTS)
         accepted=validate_settings({'vx':300,'vy':-300,'yaw_rate':60},DEFAULTS)
         self.assertEqual((accepted['vx'],accepted['vy'],accepted['yaw_rate']),(300,-300,60))
-        self.assertEqual(DEFAULTS['vx'],20)
+        self.assertEqual(DEFAULTS['vx'],100)
         self.assertEqual(validate_settings({'gait':'wave','gravity':3.71},DEFAULTS)['gravity'],3.71)
 
     def test_urdf_hierarchy_matches_measured_bullet_links(self):
@@ -44,6 +44,62 @@ class UiTest(unittest.TestCase):
                     self.assertAlmostEqual(abs(sum(a*b for a,b in zip(frame[1],measured[5]))),1,places=5)
                     frames[j['child']]=frame;pending.remove(j)
         finally:p.disconnect(connection)
+
+    def test_brain_http_latched_motion_and_invalid_input(self):
+        import json
+        from http.server import ThreadingHTTPServer
+        from threading import Thread
+        from urllib.error import HTTPError
+        from urllib.request import Request, urlopen
+        from simulation_ui import make_handler
+        engine=Engine()
+        try:
+            server=ThreadingHTTPServer(('127.0.0.1',0),make_handler(engine))
+        except Exception:
+            engine.closed.set();engine.worker.join(10)
+            raise
+        thread=Thread(target=server.serve_forever,daemon=True);thread.start()
+        url=f'http://127.0.0.1:{server.server_port}/api/brain'
+        def send(raw):
+            request=Request(url,json.dumps(raw).encode(),headers={'X-Muha-UI':'1','Content-Type':'application/json'})
+            with urlopen(request,timeout=3) as response:return response.status
+        def wait_for(predicate,seconds=15):
+            deadline=time.monotonic()+seconds
+            while time.monotonic()<deadline:
+                with engine.lock:state=dict(engine.snapshot)
+                self.assertNotIn('error',state)
+                if predicate(state):return state
+                time.sleep(.05)
+            self.fail(str(state))
+        try:
+            self.assertEqual(send({'command':'forward'}),202)
+            wait_for(lambda s:s.get('output',{}).get('state')=='WALK')
+            time.sleep(2.2)  # No UI heartbeat or repeated brain command.
+            with engine.lock:state=dict(engine.snapshot)
+            self.assertEqual(state['output']['state'],'WALK')
+            self.assertTrue(state['brain']['active'])
+            send({'command':'jump'})
+            wait_for(lambda s:s['brain']['boost'])
+            send({'command':'stop'})
+            wait_for(lambda s:s['output']['state']=='IDLE')
+            send({'command':'left'})
+            wait_for(lambda s:s['output']['state']=='WALK')
+            with self.assertRaises(HTTPError) as error:send({'command':[]})
+            self.assertEqual(error.exception.code,400)
+            error.exception.close()
+            wait_for(lambda s:s['brain']['blocked'] and s['output']['state']=='IDLE')
+            send({'command':'forward'})
+            time.sleep(.2)
+            with engine.lock:self.assertTrue(engine.snapshot['brain']['blocked'])
+            send({'command':'start'})
+            wait_for(lambda s:not s['brain']['blocked'])
+            send({'command':'backward'})
+            wait_for(lambda s:s['output']['state']=='WALK')
+            engine.submit({'action':'stop'})
+            wait_for(lambda s:not s['brain']['active'] and s['output']['state']=='IDLE')
+        finally:
+            server.shutdown();server.server_close();thread.join(3)
+            engine.closed.set();engine.worker.join(10)
 
     def test_worker_lifecycle(self):
         from unittest.mock import patch

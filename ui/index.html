@@ -3,11 +3,25 @@
 <style>
 :root{color-scheme:dark;--bg:#0c1317;--panel:#152026;--edge:#2c3b43;--fg:#edf3ef;--dim:#a7b7bc;--lime:#c4ed7b;--error:#ffb0a4}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 system-ui,sans-serif}header{padding:24px 32px 18px;border-bottom:1px solid var(--edge);display:flex;gap:20px;justify-content:space-between;align-items:center}h1{font-size:24px;letter-spacing:-.6px;margin:0;font-weight:600}h2{font-size:16px;margin:0 0 14px;font-weight:600}.eyebrow{color:var(--lime);font-size:12px;letter-spacing:2px;margin-bottom:5px}.sub{color:var(--dim);font-size:13px}#connection{font-size:13px;white-space:nowrap;color:var(--dim)}main{max-width:1500px;margin:auto;padding:24px 32px;display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:24px}.view{min-width:0}.screen{background:#dce5eb;border-radius:12px;overflow:hidden;position:relative;aspect-ratio:8/5}.screen canvas{width:100%;height:100%;display:block;object-fit:contain}.screen-label{position:absolute;top:14px;left:14px;background:#102027df;border:1px solid #70888f;border-radius:20px;padding:5px 12px;font-size:12px}.actions{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0}button,select,input{font:inherit}button{border:1px solid var(--edge);background:var(--panel);color:var(--fg);border-radius:8px;padding:10px 16px;cursor:pointer}button:hover{border-color:var(--lime)}button.primary{background:var(--lime);color:#172111;border-color:var(--lime);font-weight:600}button:disabled{opacity:.45;cursor:wait}button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--lime);outline-offset:3px}.telemetry{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;padding:16px 0;border-top:1px solid var(--edge);border-bottom:1px solid var(--edge)}.metric-label{color:var(--dim);font-size:12px}.metric{font-size:22px;font-variant-numeric:tabular-nums;margin-top:3px}#notice{min-height:24px;margin:14px 0;color:var(--dim)}#error{color:var(--error);margin-bottom:12px;white-space:pre-wrap}aside{display:flex;flex-direction:column;gap:16px}.panel{background:var(--panel);border:1px solid var(--edge);padding:20px;border-radius:12px}.field{margin:0 0 15px}.field:last-child{margin-bottom:0}.label{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:5px}label{color:var(--dim);font-size:13px}.value{font-variant-numeric:tabular-nums;color:var(--fg);font-size:13px}input[type=range]{accent-color:var(--lime);width:100%;margin:4px 0}select{width:100%;padding:10px;background:var(--bg);border:1px solid var(--edge);color:var(--fg);border-radius:7px}.wide{width:100%}.help{color:var(--dim);font-size:12px;margin:12px 0 0}details{margin-top:16px}summary{cursor:pointer;color:var(--dim);font-size:13px}.angles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:12px}.leg{padding:10px;background:var(--panel);border-radius:8px;font-size:12px;font-variant-numeric:tabular-nums}.leg strong{display:block;color:var(--lime);margin-bottom:5px;font-weight:500}.legend{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;color:var(--dim);font-size:12px;margin-top:12px}.footer{color:var(--dim);font-size:12px;margin-top:24px}@media(max-width:1000px){main{grid-template-columns:minmax(0,1fr) 290px;padding:16px;gap:16px}header{padding:20px 16px}}@media(max-width:720px){main{grid-template-columns:1fr}header{align-items:flex-start}h1{font-size:21px}.telemetry{gap:8px}.metric{font-size:19px}aside{display:grid;grid-template-columns:1fr 1fr}.panel{padding:15px}}@media(max-width:480px){aside{display:flex}.angles{grid-template-columns:repeat(2,minmax(0,1fr))}header{flex-direction:column;gap:8px}.actions button{flex:1 1 40%}}
 .number-wrap{display:flex;align-items:center;gap:6px;flex-shrink:0}input[type=number]{width:90px;min-width:0;padding:6px 8px;border:1px solid var(--edge);border-radius:6px;background:var(--bg);color:var(--fg);font-variant-numeric:tabular-nums}input[type=number]:invalid{border-color:var(--error)}
+.drive{margin-top:16px}.drive-layout{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;max-width:470px;margin:auto}.drive-layout button{padding:12px 6px}.drive-forward{grid-column:2}.drive-left{grid-column:1}.drive-backward{grid-column:2}.drive-stop{border-color:#ffb0a4;color:#ffb0a4}.drive button[aria-pressed=true]{background:var(--lime);border-color:var(--lime);color:#172111}.drive-modes{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}.drive-modes button{flex:1}#brain-status{margin-top:12px;color:var(--dim);font-size:13px}
 </style></head><body>
 <header><div><div class="eyebrow">ЛАБОРАТОРИЯ ДВИЖЕНИЯ</div><h1>Железная муха</h1><div class="sub">Физическая симуляция · 6 ног · 18 суставов</div></div><div id="connection" role="status">Подключение…</div></header>
 <main><section class="view" aria-label="Симуляция">
 <div class="screen"><canvas id="frame" role="img" aria-label="Живая 3D-модель робота: WebGL и физика PyBullet"></canvas><div class="screen-label">PYBULLET / WEBGL</div></div>
-<div class="actions"><button class="primary" data-action="move">Начать движение</button><button data-action="stop">Стоп</button><button id="pause" data-action="pause">Пауза физики</button><button data-action="start">Поднять / разрешить</button></div>
+<section class="panel drive" aria-label="Кнопочное управление"><h2>Управление роботом</h2>
+<div class="drive-layout">
+<button class="drive-forward" data-brain="forward" aria-pressed="false" disabled>↑ Вперёд</button>
+<button class="drive-left" data-brain="left" aria-pressed="false" disabled>↶ Налево</button>
+<button class="drive-stop" data-brain="stop" aria-pressed="false" disabled>■ Стоп</button>
+<button data-brain="right" aria-pressed="false" disabled>Направо ↷</button>
+<button class="drive-backward" data-brain="backward" aria-pressed="false" disabled>↓ Назад</button>
+</div>
+<div class="drive-modes"><button data-brain="normal" aria-pressed="false" disabled>Обычная ×1</button><button data-brain="jump" aria-pressed="false" disabled>Ускорение ×1,5</button></div>
+<button id="brain-rearm" class="wide" data-brain="start" hidden disabled>Разрешить после ошибки</button>
+<div id="brain-status" role="status" aria-live="polite">Ожидание подключения…</div>
+<p class="help">Одно нажатие — движение до следующей команды. Повороты на месте. Ускорение сохраняется до выбора «Обычная ×1», в том числе после остановки. Закрытие страницы не останавливает робота.</p>
+</section>
+<div class="actions"><button class="primary" data-action="move">Движение по параметрам</button><button data-action="stop">Стоп</button><button id="pause" data-action="pause">Пауза физики</button><button data-action="start">Поднять / разрешить</button></div>
 <div id="error" role="alert"></div><div id="notice" role="status">Загрузка модели…</div>
 <div class="telemetry"><div><div class="metric-label">Состояние</div><div class="metric" id="state">—</div></div><div><div class="metric-label">Время модели</div><div class="metric" id="clock">—</div></div><div><div class="metric-label">Высота корпуса</div><div class="metric" id="height">—</div></div></div>
 <div class="legend"><span id="position">X — · Y —</span><span id="current-gait">Походка —</span><span id="render-fps">Загрузка WebGL…</span></div>
@@ -37,6 +51,29 @@ function settings(){
 }
 async function send(action,extra={}){const res=await fetch('/api/command',{method:'POST',headers:{'Content-Type':'application/json','X-Muha-UI':'1'},body:JSON.stringify({action,...extra})});const data=await res.json();if(!res.ok)throw Error(data.error||'Ошибка команды');return data}
 async function command(action,extra={}){byId('error').textContent='';try{await send(action,extra)}catch(e){byId('error').textContent=e.message}}
+const brainButtons=[...document.querySelectorAll('[data-brain]')];
+let brainBusy=false;
+const directionNames={forward:'Вперёд',backward:'Назад',left:'Поворот налево',right:'Поворот направо',stop:'Остановка'};
+function showBrain(data){
+ const brain=data?.brain, connected=Boolean(data?.ready&&brain);
+ for(const b of brainButtons){
+  b.disabled=!connected||brainBusy||(brain.blocked&&!['stop','start','normal'].includes(b.dataset.brain));
+  const c=b.dataset.brain;
+  b.setAttribute('aria-pressed',String(Boolean(connected&&brain.active&&(c==='jump'?brain.boost:c==='normal'?!brain.boost:c===brain.command))));
+ }
+ byId('brain-rearm').hidden=!brain?.blocked;
+ byId('brain-status').textContent=!connected?'Нет связи с управлением':brain.blocked?'Движение заблокировано: '+brain.error:
+  `${brain.active?'Кнопки / мозг: '+directionNames[brain.command]:'Ручные параметры'} · ${(brain.speed*1000).toFixed(0)} → ${(brain.speed*1000*brain.multiplier).toFixed(0)} мм/с · поворот ${(brain.turn_rate*180/Math.PI).toFixed(0)}°/с`;
+}
+for(const b of brainButtons)b.onclick=async()=>{
+ if(brainBusy)return;
+ brainBusy=true;showBrain(latest);byId('error').textContent='';
+ try{
+  const res=await fetch('/api/brain',{method:'POST',headers:{'Content-Type':'application/json','X-Muha-UI':'1'},body:JSON.stringify({command:b.dataset.brain}),signal:AbortSignal.timeout(3000)});
+  const data=await res.json();if(!res.ok)throw Error(data.error||'Ошибка команды');
+ }catch(e){byId('error').textContent='Команда не подтверждена: '+e.message}
+ finally{brainBusy=false;showBrain(latest)}
+};
 for(const b of document.querySelectorAll('[data-action]'))b.onclick=()=>command(b.dataset.action);
 function applySettings(reset=false){
  try{const values=settings();if(!reset&&latest&&values.yaw!==latest.settings.yaw)throw Error('Для изменения начального угла нажмите «Новая сцена».');command(reset?'reset':'apply',{settings:values})}
@@ -46,7 +83,7 @@ byId('apply').onclick=()=>applySettings();
 byId('reset').onclick=()=>applySettings(true);
 const stateNames={SETUP:'Подъём',IDLE:'Стойка',WALK:'Ходьба',SHUTDOWN:'Посадка',FAULT:'Ошибка',OFF:'Выключен'};
 const legs=['Левая передняя','Левая средняя','Левая задняя','Правая передняя','Правая средняя','Правая задняя'];
-async function poll(){try{const response=await fetch('/api/state');if(!response.ok)throw Error('Сервер недоступен');const data=await response.json();if(data.error)throw Error(data.error);if(data.ready){latest=data;failures=0;viewer?.push(data);if(performance.now()-lastUi<200)return;lastUi=performance.now();byId('connection').textContent='● Локальная симуляция подключена';if(!initialized){for(const [id]of fields){if(data.bounds?.[id]){for(const field of [byId(id),byId(id+'-number')]){field.min=data.bounds[id][0];field.max=data.bounds[id][1]}}byId(id).value=data.settings[id];byId(id+'-number').value=data.settings[id]}byId('gait').value=data.settings.gait;initialized=true}const out=data.output;if(out){byId('state').textContent=stateNames[out.state]||out.state;byId('clock').textContent=out.timestamp.toFixed(1)+' с';byId('height').textContent=(data.position[2]*100).toFixed(1)+' см';byId('position').textContent=`X ${(data.position[0]*100).toFixed(1)} см · Y ${(data.position[1]*100).toFixed(1)} см`;byId('current-gait').textContent='Походка '+out.gait.toUpperCase();byId('angles').innerHTML=legs.map((name,i)=>`<div class="leg"><strong>${name}</strong>${out.angles.slice(i*3,i*3+3).map(v=>(v*180/Math.PI).toFixed(1)+'°').join(' / ')}</div>`).join('')}byId('notice').textContent=data.notice;byId('pause').textContent=data.paused?'Продолжить физику':'Пауза физики';}}catch(e){byId('connection').textContent='Нет связи';if(++failures>2)byId('error').textContent=e.message}finally{setTimeout(poll,40)}}
+async function poll(){try{const response=await fetch('/api/state');if(!response.ok)throw Error('Сервер недоступен');const data=await response.json();if(data.error)throw Error(data.error);if(data.ready){latest=data;failures=0;showBrain(data);viewer?.push(data);if(performance.now()-lastUi<200)return;lastUi=performance.now();byId('connection').textContent='● Локальная симуляция подключена';if(!initialized){for(const [id]of fields){if(data.bounds?.[id]){for(const field of [byId(id),byId(id+'-number')]){field.min=data.bounds[id][0];field.max=data.bounds[id][1]}}byId(id).value=data.settings[id];byId(id+'-number').value=data.settings[id]}byId('gait').value=data.settings.gait;initialized=true}const out=data.output;if(out){byId('state').textContent=stateNames[out.state]||out.state;byId('clock').textContent=out.timestamp.toFixed(1)+' с';byId('height').textContent=(data.position[2]*100).toFixed(1)+' см';byId('position').textContent=`X ${(data.position[0]*100).toFixed(1)} см · Y ${(data.position[1]*100).toFixed(1)} см`;byId('current-gait').textContent='Походка '+out.gait.toUpperCase();byId('angles').innerHTML=legs.map((name,i)=>`<div class="leg"><strong>${name}</strong>${out.angles.slice(i*3,i*3+3).map(v=>(v*180/Math.PI).toFixed(1)+'°').join(' / ')}</div>`).join('')}byId('notice').textContent=data.notice;byId('pause').textContent=data.paused?'Продолжить физику':'Пауза физики';}}catch(e){showBrain(null);byId('connection').textContent='Нет связи';if(++failures>2)byId('error').textContent=e.message}finally{setTimeout(poll,40)}}
 
 async function heartbeat(){try{await send('heartbeat')}catch{}setTimeout(heartbeat,650)}
 poll();heartbeat();

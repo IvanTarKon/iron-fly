@@ -23,6 +23,7 @@ run_check() {
 }
 run_check audit "$PYTHON" scripts/audit_upstream.py
 run_check motion-tests "$PYTHON" tests/test_motion.py
+run_check brain-tests "$PYTHON" tests/test_brain_control.py
 run_check trajectory-build "${CXX:-g++}" -std=c++17 -Wall -Wextra -Werror -O2 -I"$fw/src" tests/trajectory_probe.cpp -o build/trajectory_probe
 if [ "$own" -eq 0 ]; then run_check trajectory ./build/trajectory_probe; fi
 run_check simulation-run "$PYTHON" scripts/sim_probe.py
